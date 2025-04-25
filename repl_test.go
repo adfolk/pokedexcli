@@ -5,6 +5,65 @@ import (
 	"testing"
 )
 
+var nerfedCommands = map[string]cliCommand{
+	"exit": {
+		name:        "exit",
+		description: "Exit, but does not actually call os.Exit(0)",
+		callback:    nerfedCommandExit,
+	},
+}
+
+func nerfedCommandExit() error {
+	fmt.Print("Closing the Pokedex... Goodbye!\n")
+	return nil
+}
+
+func TestCmdExit(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+		isErr    bool
+		testNum  int
+	}{
+		{
+			input:    "exit",
+			expected: "",
+			isErr:    false,
+			testNum:  1,
+		},
+		{
+			input:    "EXIT",
+			expected: "Unknown command\n",
+			isErr:    true,
+			testNum:  2,
+		},
+		{
+			input:    "quit",
+			expected: "Unknown command\n",
+			isErr:    true,
+			testNum:  3,
+		},
+		{
+			input:    "ls",
+			expected: "Unknown command\n",
+			isErr:    true,
+			testNum:  4,
+		},
+	}
+
+	for _, c := range cases {
+		actual := runCommand(c.input, nerfedCommands)
+		if actual != nil && c.isErr == true {
+			res := fmt.Sprintf("%v", actual)
+			if res != c.expected {
+				t.Errorf("Test %d failed. \n Have: %v \n Want: %v", c.testNum, res, c.expected)
+			}
+		} else {
+			fmt.Printf("Test %d passed. Command '%v' was successfully handled.", c.testNum, c.input)
+		}
+	}
+}
+
 func TestCleanInput(t *testing.T) {
 	cases := []struct {
 		input    string
