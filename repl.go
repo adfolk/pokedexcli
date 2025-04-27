@@ -2,31 +2,25 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 )
 
-type cliCommand struct {
-	name        string
-	description string
-	callback    func() error
+type config struct {
+	Previous string `json:"previous"`
+	Next     string `json:"next"`
 }
 
-var supportedCommands = map[string]cliCommand{
-	"exit": {
-		name:        "exit",
-		description: "Exit the pokedex",
-		callback:    commandExit,
-	},
-}
-
-func init() {
-	supportedCommands["help"] = cliCommand{
-		name:        "help",
-		description: "Displays a help message",
-		callback:    commandHelp,
+func updateConfig(oldConf *config, raw []byte) error {
+	var newConf config
+	err := json.Unmarshal(raw, &newConf)
+	if err != nil {
+		fmt.Println(err)
 	}
+	*oldConf = newConf
+	return nil
 }
 
 func startRepl() {
@@ -46,8 +40,15 @@ func startRepl() {
 		}
 
 		commandName := words[0]
-		if err := runCommand(commandName, supportedCommands); err != nil {
-			fmt.Printf("%v", err)
+		command, exists := getCommands()[commandName]
+		if exists {
+			c := command.confPtr
+			err := command.callback(c)
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			fmt.Println("Unknown command")
 		}
 	}
 }
@@ -57,29 +58,38 @@ func cleanInput(text string) []string {
 	return results
 }
 
-func runCommand(text string, registry map[string]cliCommand) error {
-	cmd, exists := registry[text]
-	if exists {
-		err := cmd.callback()
-		if err != nil {
-			return err
-		}
-		return nil // execution should have succeeded
-	} else {
-		return fmt.Errorf("Unknown command\n")
-	}
+type cliCommand struct {
+	name        string
+	description string
+	callback    func(c *config) error
+	confPtr     *config
 }
 
-func commandExit() error {
-	fmt.Print("Closing the Pokedex... Goodbye!\n")
-	os.Exit(0)
-	return nil
-}
-
-func commandHelp() error {
-	fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
-	for _, cmd := range supportedCommands {
-		fmt.Printf("%v: %v\n", cmd.name, cmd.description)
+func getCommands() map[string]cliCommand {
+	return map[string]cliCommand{
+		"exit": {
+			name:        "exit",
+			description: "Exit the pokedex",
+			callback:    commandExit,
+			confPtr:     nil,
+		},
+		"help": {
+			name:        "help",
+			description: "Displays a help message",
+			callback:    commandHelp,
+			confPtr:     nil,
+		},
+		"map": {
+			name:        "map",
+			description: "Gets a page of locations",
+			callback:    getLocations,
+			confPtr:     &mapConfig,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Gets and displays the previous page of locations",
+			callback:    getPrevLocations,
+			confPtr:     &mapConfig,
+		},
 	}
-	return nil
 }
