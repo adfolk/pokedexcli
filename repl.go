@@ -2,28 +2,19 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
+	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokeapi"
 	"os"
 	"strings"
 )
 
 type config struct {
-	Previous string `json:"previous"`
-	Next     string `json:"next"`
+	pokeapiClient    pokeapi.Client
+	nextLocationsURL *string
+	prevLocationsURL *string
 }
 
-func updateConfig(oldConf *config, raw []byte) error {
-	var newConf config
-	err := json.Unmarshal(raw, &newConf)
-	if err != nil {
-		fmt.Println(err)
-	}
-	*oldConf = newConf
-	return nil
-}
-
-func startRepl() {
+func startRepl(cfg *config) {
 	s := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -42,11 +33,11 @@ func startRepl() {
 		commandName := words[0]
 		command, exists := getCommands()[commandName]
 		if exists {
-			c := command.confPtr
-			err := command.callback(c)
+			err := command.callback(cfg)
 			if err != nil {
 				fmt.Println(err)
 			}
+			continue
 		} else {
 			fmt.Println("Unknown command")
 		}
@@ -61,8 +52,7 @@ func cleanInput(text string) []string {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(c *config) error
-	confPtr     *config
+	callback    func(*config) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -71,25 +61,21 @@ func getCommands() map[string]cliCommand {
 			name:        "exit",
 			description: "Exit the pokedex",
 			callback:    commandExit,
-			confPtr:     nil,
 		},
 		"help": {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    commandHelp,
-			confPtr:     nil,
 		},
 		"map": {
 			name:        "map",
 			description: "Gets a page of locations",
-			callback:    getLocations,
-			confPtr:     &mapConfig,
+			callback:    commandMapf,
 		},
 		"mapb": {
 			name:        "mapb",
 			description: "Gets and displays the previous page of locations",
-			callback:    getPrevLocations,
-			confPtr:     &mapConfig,
+			callback:    commandMapb,
 		},
 	}
 }

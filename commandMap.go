@@ -1,69 +1,40 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokeweb"
 )
 
-type mapPage struct {
-	Results []struct {
-		Name string `json:"name"`
-		Url  string `json:"url"`
-	}
-}
-
-var mapConfig = config{
-	Previous: "",
-	Next:     "https://pokeapi.co/api/v2/location-area/",
-}
-
-func getLocations(c *config) error {
-	url := c.Next
-	locs, err := pokeweb.GetResource(url)
+func commandMapf(cfg *config) error {
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL)
 	if err != nil {
 		return err
 	}
 
-	var stashedLocs mapPage
-	err = json.Unmarshal(locs, &stashedLocs)
-	if err != nil {
-		return err
-	}
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
 
-	for _, loc := range stashedLocs.Results {
+	for _, loc := range locationsResp.Results {
 		fmt.Println(loc.Name)
-	}
-	err = updateConfig(c, locs)
-	if err != nil {
-		return err
 	}
 	return nil
 }
 
-func getPrevLocations(c *config) error {
-	url := c.Previous
-	if url == "" {
-		fmt.Println("you're on the first page")
-		return nil
+func commandMapb(cfg *config) error {
+	if cfg.prevLocationsURL == nil {
+		return errors.New("you're on the first page")
 	}
-	locs, err := pokeweb.GetResource(url)
+
+	locationResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL)
 	if err != nil {
 		return err
 	}
 
-	var stashedLocs mapPage
-	err = json.Unmarshal(locs, &stashedLocs)
-	if err != nil {
-		return err
-	}
+	cfg.nextLocationsURL = locationResp.Next
+	cfg.prevLocationsURL = locationResp.Previous
 
-	for _, loc := range stashedLocs.Results {
+	for _, loc := range locationResp.Results {
 		fmt.Println(loc.Name)
-	}
-	err = updateConfig(c, locs)
-	if err != nil {
-		return err
 	}
 	return nil
 }
