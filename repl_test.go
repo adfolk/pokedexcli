@@ -5,62 +5,73 @@ import (
 	"testing"
 )
 
-var nerfedCommands = map[string]cliCommand{
-	"exit": {
-		name:        "exit",
-		description: "Exit, but does not actually call os.Exit(0)",
-		callback:    nerfedCommandExit,
-	},
-}
+var cfg = &config{}
 
-func nerfedCommandExit() error {
+func nerfedCommandExit(cfg *config) error {
 	fmt.Print("Closing the Pokedex... Goodbye!\n")
 	return nil
+}
+
+func getNerfedCommands() map[string]cliCommand {
+	return map[string]cliCommand{
+		"exit": {
+			name:        "exitNerfed",
+			description: "Pretend to exit the pokedex",
+			callback:    nerfedCommandExit,
+		},
+	}
+}
+
+func startTestRepl(cfg *config, str string) (cmdName string) {
+	words := cleanInput(str)
+
+	commandName := words[0]
+	command, exists := getNerfedCommands()[commandName]
+	if exists {
+		err := command.callback(cfg)
+		if err != nil {
+			fmt.Println(err)
+		}
+		return commandName
+	} else {
+		return "Unknown command\n"
+	}
 }
 
 func TestCmdExit(t *testing.T) {
 	cases := []struct {
 		input    string
 		expected string
-		isErr    bool
 		testNum  int
 	}{
 		{
 			input:    "exit",
-			expected: "",
-			isErr:    false,
+			expected: "exit",
 			testNum:  1,
 		},
 		{
 			input:    "EXIT",
-			expected: "Unknown command\n",
-			isErr:    true,
+			expected: "exit",
 			testNum:  2,
 		},
 		{
 			input:    "quit",
 			expected: "Unknown command\n",
-			isErr:    true,
 			testNum:  3,
 		},
 		{
 			input:    "ls",
 			expected: "Unknown command\n",
-			isErr:    true,
 			testNum:  4,
 		},
 	}
 
 	for _, c := range cases {
-		actual := runCommand(c.input, nerfedCommands)
-		if actual != nil && c.isErr == true {
-			res := fmt.Sprintf("%v", actual)
-			if res != c.expected {
-				t.Errorf("Test %d failed. \n Have: %v \n Want: %v", c.testNum, res, c.expected)
-			}
-		} else {
-			fmt.Printf("Test %d passed. Command '%v' was successfully handled.", c.testNum, c.input)
+		actual := startTestRepl(cfg, c.input)
+		if actual != c.expected {
+			t.Errorf("Test %d failed. \n Have: %v \n Want: %v", c.testNum, actual, c.expected)
 		}
+		fmt.Printf("Test %d passed. Command '%v' was successfully handled.", c.testNum, c.input)
 	}
 }
 

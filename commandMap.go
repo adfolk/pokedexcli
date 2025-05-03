@@ -3,20 +3,55 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokeapi"
 )
 
 func commandMapf(cfg *config) error {
-	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL)
+	if cfg.nextLocationsURL == nil {
+		newUrl, rawLocations, err := cfg.pokeapiClient.GetLocations(cfg.nextLocationsURL)
+		if err != nil {
+			return err
+		}
+		cfg.pokecacheCache.Add(newUrl, rawLocations)
+		respLocs, err := pokeapi.UnmarshallLocations(rawLocations)
+
+		cfg.nextLocationsURL = respLocs.Next
+		cfg.prevLocationsURL = respLocs.Previous
+
+		for _, loc := range respLocs.Results {
+			fmt.Println(loc.Name)
+		}
+		return nil
+	}
+	rawCachedLocs, exists := cfg.pokecacheCache.Get(*cfg.nextLocationsURL)
+	if !exists {
+		newUrl, rawLocations, err := cfg.pokeapiClient.GetLocations(cfg.nextLocationsURL)
+		if err != nil {
+			return err
+		}
+		cfg.pokecacheCache.Add(newUrl, rawLocations)
+		respLocs, err := pokeapi.UnmarshallLocations(rawLocations)
+
+		cfg.nextLocationsURL = respLocs.Next
+		cfg.prevLocationsURL = respLocs.Previous
+
+		for _, loc := range respLocs.Results {
+			fmt.Println(loc.Name)
+		}
+		return nil
+
+	}
+
+	parsedLocs, err := pokeapi.UnmarshallLocations(rawCachedLocs)
 	if err != nil {
 		return err
 	}
-
-	cfg.nextLocationsURL = locationsResp.Next
-	cfg.prevLocationsURL = locationsResp.Previous
-
-	for _, loc := range locationsResp.Results {
+	cfg.nextLocationsURL = parsedLocs.Next
+	cfg.prevLocationsURL = parsedLocs.Previous
+	for _, loc := range parsedLocs.Results {
 		fmt.Println(loc.Name)
 	}
+	//fmt.Println("\nIT WORKED!!!!\n")
 	return nil
 }
 
@@ -25,16 +60,34 @@ func commandMapb(cfg *config) error {
 		return errors.New("you're on the first page")
 	}
 
-	locationResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL)
+	rawCachedLocs, exists := cfg.pokecacheCache.Get(*cfg.prevLocationsURL)
+	if !exists {
+		newUrl, rawLocations, err := cfg.pokeapiClient.GetLocations(cfg.prevLocationsURL)
+		if err != nil {
+			return err
+		}
+		cfg.pokecacheCache.Add(newUrl, rawLocations)
+		respLocs, err := pokeapi.UnmarshallLocations(rawLocations)
+
+		cfg.nextLocationsURL = respLocs.Next
+		cfg.prevLocationsURL = respLocs.Previous
+
+		for _, loc := range respLocs.Results {
+			fmt.Println(loc.Name)
+		}
+		return nil
+	}
+
+	parsedLocs, err := pokeapi.UnmarshallLocations(rawCachedLocs)
 	if err != nil {
 		return err
 	}
+	cfg.nextLocationsURL = parsedLocs.Next
+	cfg.prevLocationsURL = parsedLocs.Previous
 
-	cfg.nextLocationsURL = locationResp.Next
-	cfg.prevLocationsURL = locationResp.Previous
-
-	for _, loc := range locationResp.Results {
+	for _, loc := range parsedLocs.Results {
 		fmt.Println(loc.Name)
 	}
+	//fmt.Println("\nIT WORKED!!!!\n")
 	return nil
 }

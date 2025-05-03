@@ -3,13 +3,16 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokeapi"
 	"os"
 	"strings"
+
+	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokeapi"
+	"github.com/adfolk/bootdev-guided/pokedexcli/internal/pokecache"
 )
 
 type config struct {
 	pokeapiClient    pokeapi.Client
+	pokecacheCache   *pokecache.Cache
 	nextLocationsURL *string
 	prevLocationsURL *string
 }
