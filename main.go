@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
 
 func main() {
-	fmt.Println("Hello from pokedex cli")
+	scr := bufio.NewScanner(os.Stdin)
 }
