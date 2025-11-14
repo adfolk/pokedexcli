@@ -1,61 +1,40 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 )
 
-func mapf(c *Config) error {
-	locs, err := getLocs(c.Next)
-	fmt.Printf("Getting resource from: %s\n", c.Next)
-	for _, res := range locs.Results {
-		fmt.Printf("%s\n", res.Name)
-	}
-
-	fmt.Printf("Next page: %s\n", locs.Next)
-	fmt.Printf("Previous page: %s\n", locs.Prev)
-	c.Previous = locs.Prev
-	c.Next = locs.Next
-
-	return err
-}
-
-func mapb(c *Config) error {
-	locs, err := getLocs(c.Previous)
-	fmt.Printf("Getting resource from: %s\n", c.Previous)
-	for _, res := range locs.Results {
-		fmt.Printf("%s\n", res.Name)
-	}
-
-	fmt.Printf("Next page: %s\n", locs.Next)
-	fmt.Printf("Previous page: %s\n", locs.Prev)
-	c.Previous = locs.Prev
-	c.Next = locs.Next
-
-	return err
-}
-
-type PokeLocs struct {
-	Next    string `json:"next"`
-	Prev    string `json:"previous"`
-	Results []struct {
-		Name string `json:"name"`
-		Url  string `json:"url"`
-	}
-}
-
-func getLocs(endPoint string) (PokeLocs, error) {
-	res, err := http.Get(endPoint)
-	results := PokeLocs{}
+func cmdMapf(cfg *config) error {
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL)
 	if err != nil {
-		return results, fmt.Errorf("Problem calling api: %v", err)
+		return err
 	}
 
-	decoder := json.NewDecoder(res.Body)
-	if err := decoder.Decode(&results); err != nil {
-		return results, err
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
+
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
+	}
+	return nil
+}
+
+func cmdMapb(cfg *config) error {
+	if cfg.prevLocationsURL == nil {
+		return errors.New("you're on the first page")
 	}
 
-	return results, nil
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
+
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
+	}
+	return nil
 }

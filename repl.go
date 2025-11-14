@@ -5,26 +5,39 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/adfolk/pokedexcli/internal/pokeapi"
 )
 
-const PokeApiEndPoint string = "https://pokeapi.co/api/v2/location-area/"
+type config struct {
+	pokeapiClient    pokeapi.Client
+	nextLocationsURL *string
+	prevLocationsURL *string
+}
 
-func startRepl() {
+func startRepl(cfg *config) {
 	reader := bufio.NewScanner(os.Stdin)
-	conf := newConfig(PokeApiEndPoint)
 	for {
 		fmt.Print("Pokedex > ")
 		reader.Scan()
+
 		words := cleanInput(reader.Text())
 		if len(words) == 0 {
 			continue
 		}
+
 		cmdName := words[0]
+
 		cmd, exists := getCmds()[cmdName]
 		if exists {
-			cmd.callback(conf)
+			err := cmd.callback(cfg)
+			if err != nil {
+				fmt.Println(err)
+			}
+			continue
 		} else {
 			fmt.Println("Unknown command")
+			continue
 		}
 	}
 }
@@ -35,22 +48,10 @@ func cleanInput(text string) []string {
 	return words
 }
 
-type Config struct {
-	Next     string
-	Previous string
-}
-
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(c *Config) error
-}
-
-func newConfig(ep string) *Config {
-	c := Config{
-		Next: ep,
-	}
-	return &c
+	callback    func(*config) error
 }
 
 func getCmds() map[string]cliCommand {
@@ -63,17 +64,17 @@ func getCmds() map[string]cliCommand {
 		"help": {
 			name:        "help",
 			description: "Displays a help message",
-			callback:    help,
+			callback:    cmdHelp,
 		},
 		"map": {
 			name:        "map",
 			description: "gets the next page of loc results",
-			callback:    mapf,
+			callback:    cmdMapf,
 		},
 		"mapb": {
 			name:        "mapb",
 			description: "goes back to previous page of locations",
-			callback:    mapb,
+			callback:    cmdMapb,
 		},
 	}
 }
