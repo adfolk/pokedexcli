@@ -29,19 +29,16 @@ func startRepl(cfg *config) {
 		}
 
 		cmdName := words[0]
+		args := []string{}
+		if len(words) > 1 {
+			args = words[1:]
+		}
 
 		cmd, exists := getCmds()[cmdName]
 		if exists {
-			if len(words) > 1 {
-				err := cmd.callback(cfg, words[1])
-				if err != nil {
-					fmt.Println(err)
-				}
-			} else {
-				err := cmd.callback(cfg)
-				if err != nil {
-					fmt.Println(err)
-				}
+			err := cmd.callback(cfg, args...)
+			if err != nil {
+				fmt.Println(err)
 			}
 			continue
 		} else {
@@ -74,6 +71,11 @@ func getCmds() map[string]cliCommand {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    cmdHelp,
+		},
+		"catch": {
+			name:        "catch",
+			description: "catch a pokemon",
+			callback:    cmdCatch,
 		},
 		"map": {
 			name:        "map",
